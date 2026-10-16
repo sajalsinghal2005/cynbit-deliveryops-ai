@@ -37,7 +37,9 @@ export type AgentOutcomeType =
   | "UNSUPPORTED_REQUEST"
   | "INVALID_REQUEST"
   | "TOOL_EXECUTION_FAILURE"
-  | "INTERNAL_FAILURE";
+  | "INTERNAL_FAILURE"
+  | "CLARIFICATION"
+  | "REFUSAL";
 
 export interface AgentProcessResult {
   success: boolean;
@@ -334,11 +336,11 @@ export class BusinessAgent {
 
     // 1.5.3 Cross-Domain Client Delivery + Billing Summary
     if (
-      /(?:delivery\s+(?:and|&|\+)\s+(?:billing|invoices?)|clients?\s+have\s+delivery\s+problems|delivery\s+and\s+billing\s+health|client\s+delivery\s+summary|both\s+delivery\s+risk\s+and\s+overdue)/i.test(
+      /(?:delivery\s+(?:and|&|\+)\s+(?:billing|invoices?|account)|clients?\s+have\s+delivery\s+problems|delivery\s+and\s+billing\s+health|client\s+delivery\s+summary|both\s+delivery\s+risk\s+and\s+overdue)/i.test(
         trimmed
       ) ||
       (/(?:delivery|project)/i.test(trimmed) &&
-        /(?:invoice|billing|overdue|debt)/i.test(trimmed) &&
+        /(?:invoice|billing|overdue|debt|account|unpaid)/i.test(trimmed) &&
         /(?:client|customer)/i.test(trimmed))
     ) {
       let custId: string | undefined = undefined;
@@ -357,7 +359,7 @@ export class BusinessAgent {
 
     // 1.5.4 Project Blockers
     if (
-      /(?:what\s+is\s+blocking|blockers?\s+(?:for|on|in)|blocking\s+["']?([A-Za-z0-9_-]+)|show\s+(?:all\s+)?blockers|list\s+blockers|active\s+blockers|projects?\s+have\s+active\s+blockers)/i.test(
+      /(?:what\s+is\s+blocking|blockers?\s+(?:exist\s+)?(?:for|on|in)|blocking\s+["']?([A-Za-z0-9_-]+)|show\s+(?:all\s+)?blockers|list\s+blockers|active\s+blockers|projects?\s+have\s+active\s+blockers)/i.test(
         trimmed
       )
     ) {
@@ -376,7 +378,7 @@ export class BusinessAgent {
 
     // 1.5.5 Portfolio Highest Risk Ranking & Immediate Attention
     if (
-      /(?:highest\s+risk|highest\s+delivery\s+risk|most\s+at\s+risk|projects?\s+(?:are|is)\s+(?:currently\s+)?(?:at\s+)?highest\s+risk|projects?\s+need\s+immediate\s+attention|immediate\s+attention|which\s+projects?\s+(?:are|is)\s+high\s+risk)/i.test(
+      /(?:highest\s+risk|highest\s+delivery\s+risk|most\s+at\s+risk|which\s+projects?\s+(?:are|is)\s+(?:currently\s+)?at\s+risk|projects?\s+(?:are|is)\s+(?:currently\s+)?(?:at\s+)?(?:highest\s+)?risk|projects?\s+need\s+immediate\s+attention|immediate\s+attention|which\s+projects?\s+(?:are|is)\s+high\s+risk)/i.test(
         trimmed
       )
     ) {
@@ -388,7 +390,7 @@ export class BusinessAgent {
 
     // 1.5.6 Specific Project Risk Analysis
     if (
-      /(?:why\s+is\s+.*(?:at\s+risk|delayed|risky)|is\s+.*(?:at\s+risk|delayed|risky)|risk\s+analysis|project\s+risk)/i.test(
+      /(?:why\s+is\s+.*(?:at\s+risk|delayed|risky)|is\s+.*(?:at\s+risk|delayed|risky)|risk\s+assessment|risk\s+analysis|project\s+risk)/i.test(
         trimmed
       )
     ) {
@@ -419,7 +421,7 @@ export class BusinessAgent {
 
     // 1.5.8 Project Status / Summary
     if (
-      /(?:status\s+of\s+(?:project\s+)?|project\s+summary|summary\s+of\s+(?:project\s+)?|overview\s+of\s+(?:project\s+)?|details\s+(?:for|of)\s+(?:project\s+)?)/i.test(
+      /(?:status\s+(?:update\s+)?(?:of|for)\s+(?:project\s+)?|project\s+summary|project\s+delivery\s+summary|give\s+me\s+(?:the\s+)?(?:project\s+)?(?:delivery\s+)?summary|summary\s+of\s+(?:project\s+)?|overview\s+of\s+(?:project\s+)?|details\s+(?:for|of)\s+(?:project\s+)?|milestones?\s+(?:for|of|in|progress)|delayed\s+milestones)/i.test(
         trimmed
       ) &&
       /(?:Falcon|Zephyr|Titan|Apex|PRJ-\d+)/i.test(trimmed)
@@ -482,7 +484,7 @@ export class BusinessAgent {
 
     // 2.3 Top Outstanding Customers / Debtors
     if (
-      /(?:top\s+outstanding\s+customers?|highest\s+outstanding\s+balances?|highest\s+debt\s+customers?|top\s+debtors?|customers?\s+with\s+(?:the\s+)?highest\s+(?:outstanding|unpaid|debt)|who\s+owes\s+(?:the\s+)?most(?:\s+money)?|top\s+unpaid\s+clients?)/i.test(
+      /(?:top\s+outstanding\s+customers?|highest\s+outstanding\s+balances?|highest\s+debt\s+customers?|top\s+debtors?|customers?\s+with\s+(?:the\s+)?highest\s+(?:outstanding|unpaid|debt)|who\s+owes\s+(?:the\s+)?most(?:\s+money)?|which\s+customer\s+owes\s+(?:the\s+)?most(?:\s+money)?|top\s+unpaid\s+clients?)/i.test(
         trimmed,
       )
     ) {

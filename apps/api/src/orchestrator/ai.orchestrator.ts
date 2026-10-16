@@ -146,6 +146,18 @@ export class AIOrchestrator {
 
         // CASE A: Direct Final Answer or Clarification
         if (decision.type === "final_answer" || decision.type === "clarification") {
+          let outcome: "READ_ONLY_RESULT" | "CLARIFICATION" | "REFUSAL" = "READ_ONLY_RESULT";
+          const text = decision.response || "";
+          if (decision.type === "clarification" || /(?:please\s+clarify|could\s+you\s+specify|which\s+project)/i.test(text)) {
+            outcome = "CLARIFICATION";
+          } else if (
+            /(?:cannot|not\s+supported|unsupported|unable\s+to|refuse|disallowed|prohibited|not\s+permitted|do\s+not\s+have|can\s+only|safeguards?)/i.test(
+              text
+            )
+          ) {
+            outcome = "REFUSAL";
+          }
+
           await this.recordAuditTrail(actorIdentity, {
             requestId,
             provider: this.activeProvider.name,
@@ -158,7 +170,7 @@ export class AIOrchestrator {
 
           return {
             success: true,
-            outcome: "READ_ONLY_RESULT",
+            outcome,
             message: decision.response || "Request processed successfully.",
             approvalRequired: false,
             mode: "LLM",

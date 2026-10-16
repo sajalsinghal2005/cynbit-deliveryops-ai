@@ -105,11 +105,11 @@ export class DeterministicLLMProvider implements LLMProvider {
     }
     // 4. Cross-Domain Client Delivery + Billing Summary
     else if (
-      /(?:delivery\s+(?:and|&|\+)\s+(?:billing|invoices?)|clients?\s+have\s+delivery\s+problems|delivery\s+and\s+billing\s+health|client\s+delivery\s+summary|both\s+delivery\s+risk\s+and\s+overdue)/i.test(
+      /(?:delivery\s+(?:and|&|\+)\s+(?:billing|invoices?|account)|clients?\s+have\s+delivery\s+problems|delivery\s+and\s+billing\s+health|client\s+delivery\s+summary|both\s+delivery\s+risk\s+and\s+overdue)/i.test(
         trimmed
       ) ||
       (/(?:delivery|project)/i.test(trimmed) &&
-        /(?:invoice|billing|overdue|debt)/i.test(trimmed) &&
+        /(?:invoice|billing|overdue|debt|account|unpaid)/i.test(trimmed) &&
         /(?:client|customer)/i.test(trimmed))
     ) {
       const custId = extractCustomerIdentifier(trimmed);
@@ -124,7 +124,7 @@ export class DeterministicLLMProvider implements LLMProvider {
     }
     // 5. Project Blockers
     else if (
-      /(?:what\s+is\s+blocking|blockers?\s+(?:for|on|in)|blocking\s+["']?([A-Za-z0-9_-]+)|show\s+(?:all\s+)?blockers|list\s+blockers|active\s+blockers|projects?\s+have\s+active\s+blockers)/i.test(
+      /(?:what\s+is\s+blocking|blockers?\s+(?:exist\s+)?(?:for|on|in)|blocking\s+["']?([A-Za-z0-9_-]+)|show\s+(?:all\s+)?blockers|list\s+blockers|active\s+blockers|projects?\s+have\s+active\s+blockers)/i.test(
         trimmed
       )
     ) {
@@ -169,15 +169,15 @@ export class DeterministicLLMProvider implements LLMProvider {
     }
     // 8. General Which Projects Are At Risk
     else if (
-      /(?:which\s+projects?\s+(?:are|is)\s+at\s+risk|projects?\s+at\s+risk|show\s+at[-_\s]risk\s+projects?)/i.test(
+      /(?:which\s+projects?\s+(?:are|is)\s+(?:currently\s+)?at\s+risk|projects?\s+at\s+risk|show\s+at[-_\s]risk\s+projects?)/i.test(
         trimmed
       )
     ) {
       decision = {
         type: "tool_call",
-        toolName: "project-search",
-        arguments: { status: "at_risk" },
-        reasoningSummary: "Search delivery registry for projects marked at_risk.",
+        toolName: "project-risk-analysis",
+        arguments: { projectId: "all" },
+        reasoningSummary: "Perform portfolio-wide deterministic delivery risk ranking across active projects.",
       };
     }
     // 9. Delivery Operations Summary
@@ -193,9 +193,9 @@ export class DeterministicLLMProvider implements LLMProvider {
         reasoningSummary: "Retrieve delivery operations portfolio summary across all active projects.",
       };
     }
-    // 10. Project Status / Summary
+    // 10. Project Status / Summary / Milestones
     else if (
-      /(?:status\s+of\s+(?:project\s+)?|project\s+summary|summary\s+of\s+(?:project\s+)?|overview\s+of\s+(?:project\s+)?|details\s+(?:for|of)\s+(?:project\s+)?)/i.test(
+      /(?:status\s+(?:update\s+)?(?:of|for)\s+(?:project\s+)?|project\s+summary|project\s+delivery\s+summary|summary\s+of\s+(?:project\s+)?|overview\s+of\s+(?:project\s+)?|details\s+(?:for|of)\s+(?:project\s+)?|milestones?\s+(?:for|of|in|progress)|delayed\s+milestones)/i.test(
         trimmed
       ) &&
       extractProjectIdentifier(trimmed)
@@ -341,7 +341,7 @@ export class DeterministicLLMProvider implements LLMProvider {
     }
     // 6. BI Analytics: Top Outstanding Customers / Debtors
     else if (
-      /(?:top\s+outstanding\s+customers?|highest\s+outstanding\s+balances?|highest\s+debt|top\s+debtors?|who\s+owes\s+the\s+most|outstanding\s+revenue\s+by\s+customer)/i.test(
+      /(?:top\s+outstanding\s+customers?|highest\s+outstanding\s+balances?|highest\s+debt|top\s+debtors?|who\s+owes\s+the\s+most|which\s+customer\s+owes\s+the\s+most|outstanding\s+revenue\s+by\s+customer)/i.test(
         trimmed
       )
     ) {
