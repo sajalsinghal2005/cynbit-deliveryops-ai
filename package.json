@@ -1,0 +1,13 @@
+{
+  "name": "bizops-ai",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev --filter=web",
+    "build": "turbo build",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "latest"
+  },
+  "packageManager": "pnpm@12.9.1"
+}

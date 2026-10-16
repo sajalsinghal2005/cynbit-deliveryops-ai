@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bizops-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-bizops_ai}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bizops_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bizops-internal
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: bizops-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: "0.0.0.0"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-bizops_ai}?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-simulation}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-BizOps AI <billing@bizops.ai>}
+      EMAIL_WEBHOOK_SECRET: ${EMAIL_WEBHOOK_SECRET:-}
+      EMAIL_TIMEOUT_MS: ${EMAIL_TIMEOUT_MS:-5000}
+      LLM_PROVIDER: ${LLM_PROVIDER:-deterministic}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      LLM_TIMEOUT_MS: ${LLM_TIMEOUT_MS:-10000}
+      LOG_LEVEL: info
+    networks:
+      - bizops-internal
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  bizops-internal:
+    driver: bridge
