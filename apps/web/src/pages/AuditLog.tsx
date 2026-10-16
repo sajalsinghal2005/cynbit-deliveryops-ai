@@ -444,6 +444,18 @@ export default function AuditLog() {
                             DECISION_APPROVED
                           </span>
                         )}
+                        {event.eventType === 'DECISION_APPROVED_EXECUTION_FAILED' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200/70">
+                            <AlertTriangle size={12} className="text-amber-600" />
+                            EXECUTION_FAILED
+                          </span>
+                        )}
+                        {event.eventType === 'AI_REQUEST_ORCHESTRATED' && (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200/70">
+                            <Bot size={12} className="text-blue-600" />
+                            ORCHESTRATED
+                          </span>
+                        )}
                         {isRejected && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200/70">
                             <XCircle size={12} className="text-rose-600" />
@@ -456,7 +468,7 @@ export default function AuditLog() {
                             PROPOSAL_CREATED
                           </span>
                         )}
-                        {!isApproved && !isRejected && !isProposal && (
+                        {!isApproved && !isRejected && !isProposal && event.eventType !== 'DECISION_APPROVED_EXECUTION_FAILED' && event.eventType !== 'AI_REQUEST_ORCHESTRATED' && (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                             {event.eventType}
                           </span>
@@ -700,6 +712,30 @@ export default function AuditLog() {
                     <p className="text-xs text-slate-600 mt-0.5">{selectedEvent.approvalRequest.description}</p>
                   </div>
                 )}
+
+                {/* Visual Consequential Action Lifecycle Stepper */}
+                <div className="pt-3 border-t border-slate-100">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">
+                    Consequential Action Audit Lifecycle:
+                  </span>
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-1 text-[11px] font-semibold bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                    <span className="text-purple-700 flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-purple-600" /> PROPOSAL_CREATED
+                    </span>
+                    <span className="text-slate-300">→</span>
+                    <span className={selectedEvent.approvalRequest.status === "PENDING" ? "text-amber-600 font-bold" : "text-slate-600"}>
+                      PENDING REVIEW
+                    </span>
+                    <span className="text-slate-300">→</span>
+                    <span className={selectedEvent.approvalRequest.status === "APPROVED" ? "text-emerald-700 font-bold" : selectedEvent.approvalRequest.status === "REJECTED" ? "text-rose-700 font-bold" : "text-slate-400"}>
+                      {selectedEvent.approvalRequest.status === "APPROVED" ? "DECISION_APPROVED" : selectedEvent.approvalRequest.status === "REJECTED" ? "DECISION_REJECTED" : "AWAITING_DECISION"}
+                    </span>
+                    <span className="text-slate-300">→</span>
+                    <span className={selectedEvent.approvalRequest.executionStatus === "SUCCESS" ? "text-emerald-700 font-bold" : selectedEvent.approvalRequest.executionStatus === "FAILED" ? "text-rose-700 font-bold" : "text-slate-400"}>
+                      {selectedEvent.approvalRequest.executionStatus === "SUCCESS" ? "EXECUTION SUCCESS" : selectedEvent.approvalRequest.executionStatus === "FAILED" ? "EXECUTION FAILED" : "NOT EXECUTED"}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 

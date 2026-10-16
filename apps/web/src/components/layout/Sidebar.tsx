@@ -19,6 +19,7 @@ import {
   LogOut,
   Loader2,
   UserCog,
+  FolderKanban,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import type { UserRole } from '../../types/auth';
@@ -50,6 +51,12 @@ const navItems: NavItemConfig[] = [
     icon: Bot,
     isAi: true,
     roles: ['ADMIN', 'OPERATOR'],
+  },
+  {
+    label: 'Projects',
+    to: '/projects',
+    icon: FolderKanban,
+    roles: ['ADMIN', 'OPERATOR', 'APPROVER'],
   },
   {
     label: 'Approvals',

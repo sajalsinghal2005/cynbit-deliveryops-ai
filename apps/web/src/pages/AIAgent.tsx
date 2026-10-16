@@ -16,6 +16,7 @@ import {
   Sparkles,
   Trash2,
   Zap,
+  AlertTriangle,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { api, ApiError } from "../lib/api";
@@ -391,34 +392,34 @@ export default function Agent() {
 
                 <div className="mt-6 grid w-full max-w-2xl gap-2.5 sm:grid-cols-3">
                   <Suggestion
+                    text="Which projects are at risk?"
+                    description="DeliveryOps portfolio risk"
+                    onClick={() => runAgent("Which projects are currently at risk?")}
+                  />
+                  <Suggestion
+                    text="What is blocking Zephyr?"
+                    description="Blocker severity & impact"
+                    onClick={() => runAgent("What is blocking the Zephyr project?")}
+                  />
+                  <Suggestion
+                    text="Status of PRJ-101"
+                    description="Falcon milestones & health"
+                    onClick={() => runAgent("What is the status of PRJ-101?")}
+                  />
+                  <Suggestion
+                    text="Risk & overdue invoices"
+                    description="Cross-domain delivery & AR"
+                    onClick={() => runAgent("Which clients have both delivery risk and overdue invoices?")}
+                  />
+                  <Suggestion
+                    text="Prepare follow-up for Falcon"
+                    description="Creates governed proposal"
+                    onClick={() => runAgent("Prepare a client follow-up for Falcon")}
+                  />
+                  <Suggestion
                     text="How much is outstanding?"
                     description="Portfolio AR total"
                     onClick={() => runAgent("How much money is outstanding?")}
-                  />
-                  <Suggestion
-                    text="Top outstanding customers"
-                    description="Rank debtor balances"
-                    onClick={() => runAgent("Which customers have the highest outstanding balances?")}
-                  />
-                  <Suggestion
-                    text="Which invoices are overdue?"
-                    description="Overdue debt report"
-                    onClick={() => runAgent("Which invoices are overdue?")}
-                  />
-                  <Suggestion
-                    text="Invoice status summary"
-                    description="Portfolio status & metrics"
-                    onClick={() => runAgent("Give me an invoice status summary")}
-                  />
-                  <Suggestion
-                    text="Customer summary for Ananya"
-                    description="Profile & financial history"
-                    onClick={() => runAgent("Customer summary for Ananya Iyer")}
-                  />
-                  <Suggestion
-                    text="Send reminder for INV-1001"
-                    description="Creates approval proposal"
-                    onClick={() => runAgent("Send a reminder for invoice INV-1001")}
                   />
                 </div>
               </div>
@@ -719,6 +720,15 @@ function AgentResponseCard({
       toolUsed === "customer-invoice-history") &&
     data?.invoices;
 
+  const isProjectSearchData = toolUsed === "project-search" && data?.projects;
+  const isProjectSummaryData = toolUsed === "project-summary" && data?.found && data?.project;
+  const isProjectRiskData = toolUsed === "project-risk-analysis" && data?.found;
+  const isProjectBlockersData = toolUsed === "project-blockers" && data?.blockers;
+  const isClientDeliveryData = toolUsed === "client-delivery-summary" && data?.customer && data?.projects;
+  const isPrepareFollowupData =
+    (toolUsed === "prepare-client-followup" || data?.action === "prepare-client-followup") &&
+    (data?.proposedSubject || data?.subject || data?.approvalRequest);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -829,6 +839,17 @@ function AgentResponseCard({
         <div className="whitespace-pre-wrap break-words text-xs leading-6 text-slate-700">
           {message}
         </div>
+
+        {/* 2.1 SAFE REASONING SUMMARY */}
+        {response.reasoningSummary && response.reasoningSummary !== message && (
+          <div className="mt-2.5 rounded-lg border border-slate-100 bg-slate-50/80 p-2.5 text-[11px] text-slate-600 flex items-start gap-2">
+            <Sparkles size={13} className="text-violet-600 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-semibold text-slate-800">Agent Reasoning Summary: </span>
+              <span>{response.reasoningSummary}</span>
+            </div>
+          </div>
+        )}
 
         {/* 3. STRUCTURED DATA PRESENTATION */}
         {/* 3.1 BI: Outstanding Total Card */}
@@ -1192,6 +1213,443 @@ function AgentResponseCard({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* 3.11 Cynbit DeliveryOps: Project Risk Analysis */}
+        {isProjectRiskData && (
+          <div className="mt-4 space-y-3">
+            {/* Case A: Portfolio Risk Ranking */}
+            {data.portfolioRiskRanking && Array.isArray(data.portfolioRiskRanking) && (
+              <div className="overflow-hidden rounded-xl border border-slate-200">
+                <div className="flex items-center justify-between bg-slate-50 px-3.5 py-2.5 border-b border-slate-200">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle size={14} className="text-amber-600" />
+                    <span className="text-xs font-bold text-slate-800">
+                      DeliveryOps Portfolio Risk Ranking ({data.portfolioRiskRanking.length} Projects)
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 font-medium">Deterministic Server Risk Engine</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead className="border-b border-slate-200 bg-white text-[10px] uppercase text-slate-400">
+                      <tr>
+                        <th className="px-3.5 py-2 font-medium">Project</th>
+                        <th className="px-3.5 py-2 font-medium">Client</th>
+                        <th className="px-3.5 py-2 font-medium">Risk Level</th>
+                        <th className="px-3.5 py-2 font-medium">Risk Score</th>
+                        <th className="px-3.5 py-2 font-medium">Health</th>
+                        <th className="px-3.5 py-2 font-medium">Blockers</th>
+                        <th className="px-3.5 py-2 font-medium">Delayed MS</th>
+                        <th className="px-3.5 py-2 font-medium">Key Risk Driver</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 bg-white">
+                      {data.portfolioRiskRanking.map((p: any) => (
+                        <tr key={p.projectId} className="hover:bg-slate-50/50">
+                          <td className="px-3.5 py-2.5">
+                            <span className="font-mono text-xs font-bold text-violet-600">{p.projectId}</span>
+                            <div className="font-medium text-slate-800 text-[11px] truncate max-w-[150px]">{p.projectName}</div>
+                          </td>
+                          <td className="px-3.5 py-2.5 text-slate-600 text-[11px]">{p.clientCompany}</td>
+                          <td className="px-3.5 py-2.5">
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                                p.overallRiskLevel === "CRITICAL"
+                                  ? "bg-rose-100 text-rose-800 border border-rose-200"
+                                  : p.overallRiskLevel === "HIGH"
+                                  ? "bg-amber-100 text-amber-800 border border-amber-200"
+                                  : p.overallRiskLevel === "MEDIUM"
+                                  ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                                  : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              }`}
+                            >
+                              {p.overallRiskLevel}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-2.5 font-mono font-bold text-slate-800">{p.riskScore}/100</td>
+                          <td className="px-3.5 py-2.5 font-mono text-slate-700">{p.healthScore}/100</td>
+                          <td className="px-3.5 py-2.5">
+                            <span className={p.openBlockersCount > 0 ? "font-bold text-rose-600" : "text-slate-500"}>
+                              {p.openBlockersCount}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-2.5">
+                            <span className={p.delayedMilestonesCount > 0 ? "font-bold text-amber-600" : "text-slate-500"}>
+                              {p.delayedMilestonesCount}
+                            </span>
+                          </td>
+                          <td className="px-3.5 py-2.5 text-[11px] text-slate-500 max-w-[200px] truncate" title={p.keyRiskDriver}>
+                            {p.keyRiskDriver}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Case B: Single Project Risk Analysis */}
+            {data.projectId && (
+              <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono text-xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded border border-violet-100">
+                      {data.projectId}
+                    </span>
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">{data.projectName}</h4>
+                      <p className="text-[11px] text-slate-500">{data.clientCompany}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-md px-2.5 py-1 text-xs font-bold ${
+                        data.overallRiskLevel === "CRITICAL"
+                          ? "bg-rose-100 text-rose-800 border border-rose-200"
+                          : data.overallRiskLevel === "HIGH"
+                          ? "bg-amber-100 text-amber-800 border border-amber-200"
+                          : data.overallRiskLevel === "MEDIUM"
+                          ? "bg-yellow-100 text-yellow-800 border border-yellow-200"
+                          : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      }`}
+                    >
+                      {data.overallRiskLevel} RISK ({data.riskScore}/100)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Breakdown Stats */}
+                {data.breakdown && (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                    <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Health Score</span>
+                      <p className="font-mono text-sm font-bold text-slate-800 mt-0.5">{data.breakdown.healthScore}/100</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Milestone Progress</span>
+                      <p className="font-mono text-sm font-bold text-indigo-600 mt-0.5">{data.breakdown.milestones?.avgProgress}%</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Delayed Milestones</span>
+                      <p className="font-mono text-sm font-bold text-amber-600 mt-0.5">{data.breakdown.milestones?.delayed} of {data.breakdown.milestones?.total}</p>
+                    </div>
+                    <div className="rounded-lg bg-slate-50 p-2.5 border border-slate-100">
+                      <span className="text-[10px] uppercase font-bold text-slate-400">Open Blockers</span>
+                      <p className="font-mono text-sm font-bold text-rose-600 mt-0.5">
+                        {data.breakdown.openBlockers?.total} ({data.breakdown.openBlockers?.critical} crit, {data.breakdown.openBlockers?.high} high)
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Evidence List */}
+                {data.evidence && Array.isArray(data.evidence) && data.evidence.length > 0 && (
+                  <div className="rounded-lg bg-slate-50 p-3 border border-slate-100 space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">
+                      Authoritative Risk Evidence (Server-Side)
+                    </span>
+                    <ul className="space-y-1 text-xs text-slate-700">
+                      {data.evidence.map((item: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="text-amber-500 font-bold">•</span>
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Grounded Recommendations */}
+                {data.recommendations && Array.isArray(data.recommendations) && data.recommendations.length > 0 && (
+                  <div className="rounded-lg bg-indigo-50/50 p-3 border border-indigo-100 space-y-1.5">
+                    <span className="text-[10px] uppercase font-bold text-indigo-700 tracking-wider">
+                      Grounded Operational Recommendations
+                    </span>
+                    <ul className="space-y-1 text-xs text-indigo-900">
+                      {data.recommendations.map((rec: string, idx: number) => (
+                        <li key={idx} className="flex items-start gap-1.5">
+                          <span className="text-indigo-600 font-bold">✓</span>
+                          <span>{rec}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3.12 Cynbit DeliveryOps: Project Search Table */}
+        {isProjectSearchData && data.projects.length > 0 && (
+          <div className="mt-4 overflow-hidden rounded-xl border border-slate-200">
+            <div className="bg-slate-50 px-3.5 py-2 text-[11px] font-semibold text-slate-700 flex items-center justify-between">
+              <span>Matched Delivery Projects ({data.projects.length})</span>
+              <span className="text-[10px] text-slate-500">PostgreSQL Authoritative Records</span>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="border-b border-slate-200 bg-white text-[10px] uppercase text-slate-400">
+                  <tr>
+                    <th className="px-3.5 py-2 font-medium">Project</th>
+                    <th className="px-3.5 py-2 font-medium">Client</th>
+                    <th className="px-3.5 py-2 font-medium">Status</th>
+                    <th className="px-3.5 py-2 font-medium">Health</th>
+                    <th className="px-3.5 py-2 font-medium">Lead</th>
+                    <th className="px-3.5 py-2 font-medium">Target Date</th>
+                    <th className="px-3.5 py-2 font-medium">Milestones</th>
+                    <th className="px-3.5 py-2 font-medium">Blockers</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {data.projects.map((p: any) => (
+                    <tr key={p.id} className="hover:bg-slate-50/50">
+                      <td className="px-3.5 py-2.5">
+                        <span className="font-mono text-xs font-bold text-violet-600">{p.id}</span>
+                        <div className="font-medium text-slate-800 text-[11px] truncate max-w-[160px]">{p.name}</div>
+                      </td>
+                      <td className="px-3.5 py-2.5 text-slate-600">{p.clientCompany || p.clientName || "—"}</td>
+                      <td className="px-3.5 py-2.5">
+                        <span
+                          className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                            p.status === "on_track"
+                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                              : p.status === "at_risk"
+                              ? "bg-amber-50 text-amber-700 border border-amber-200"
+                              : "bg-rose-50 text-rose-700 border border-rose-200"
+                          }`}
+                        >
+                          {p.status}
+                        </span>
+                      </td>
+                      <td className="px-3.5 py-2.5 font-mono font-bold text-slate-700">{p.healthScore}/100</td>
+                      <td className="px-3.5 py-2.5 text-slate-600">{p.deliveryLead}</td>
+                      <td className="px-3.5 py-2.5 text-slate-500">{p.targetDate}</td>
+                      <td className="px-3.5 py-2.5 text-slate-600">{p.milestoneCount}</td>
+                      <td className="px-3.5 py-2.5">
+                        <span className={p.openBlockerCount > 0 ? "font-bold text-rose-600" : "text-slate-500"}>
+                          {p.openBlockerCount}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 3.13 Cynbit DeliveryOps: Project Summary */}
+        {isProjectSummaryData && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xs font-bold text-violet-600 bg-violet-50 px-2 py-0.5 rounded border border-violet-100">
+                  {data.project.id}
+                </span>
+                <div>
+                  <h4 className="font-bold text-slate-900 text-sm">{data.project.name}</h4>
+                  <p className="text-[11px] text-slate-500">
+                    Client: {data.project.customer?.company || "—"} • Lead: {data.project.deliveryLead}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase text-slate-700">
+                  {data.project.status}
+                </span>
+                <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 border border-emerald-200">
+                  Health: {data.project.healthScore}/100
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+              <div className="rounded-lg bg-slate-50 p-2.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Target Date</span>
+                <p className="font-semibold text-slate-800 mt-0.5">{data.project.targetDate}</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-2.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Budget</span>
+                <p className="font-semibold text-slate-800 mt-0.5">{data.project.budget || "—"}</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-2.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Avg Progress</span>
+                <p className="font-semibold text-indigo-600 mt-0.5">
+                  {data.project.deliveryIndicators?.milestoneProgressAvg ?? 0}%
+                </p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-2.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Open Blockers</span>
+                <p className="font-semibold text-rose-600 mt-0.5">
+                  {data.project.deliveryIndicators?.openBlockersCount ?? data.project.openBlockers?.length ?? 0}
+                </p>
+              </div>
+            </div>
+
+            {/* Milestones preview if any */}
+            {data.project.milestones && data.project.milestones.length > 0 && (
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Milestones</span>
+                <div className="mt-1.5 space-y-1.5">
+                  {data.project.milestones.map((m: any) => (
+                    <div key={m.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-slate-50 border border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] text-slate-400 font-bold">{m.id}</span>
+                        <span className="font-medium text-slate-800">{m.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 text-[11px]">{m.dueDate}</span>
+                        <span className="font-bold text-slate-700">{m.progressPercent}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3.14 Cynbit DeliveryOps: Blockers List */}
+        {isProjectBlockersData && data.blockers.length > 0 && (
+          <div className="mt-4 overflow-hidden rounded-xl border border-rose-200 bg-white">
+            <div className="bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-900 border-b border-rose-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle size={14} className="text-rose-600" />
+                <span>Active Delivery Blockers ({data.blockers.length})</span>
+              </div>
+              <span className="text-[10px] font-normal text-rose-700">Project: {data.projectName || data.projectId}</span>
+            </div>
+            <div className="p-3.5 space-y-2.5">
+              {data.blockers.map((b: any) => (
+                <div key={b.id} className="rounded-lg border border-slate-200 p-3 text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                        {b.id}
+                      </span>
+                      <span className="font-bold text-slate-900">{b.title}</span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${
+                        b.severity === "CRITICAL"
+                          ? "bg-rose-100 text-rose-800"
+                          : "bg-amber-100 text-amber-800"
+                      }`}
+                    >
+                      {b.severity}
+                    </span>
+                  </div>
+                  <p className="text-slate-600">{b.description}</p>
+                  <div className="text-[11px] text-rose-700 font-medium pt-1 border-t border-slate-100">
+                    Impact: {b.impact}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 3.15 Cynbit DeliveryOps: Cross-Domain Client Delivery Summary */}
+        {isClientDeliveryData && (
+          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm space-y-3.5">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="font-bold text-slate-900 text-sm">
+                  {data.customer.name} ({data.customer.company})
+                </h4>
+                <p className="text-[11px] text-slate-500">{data.customer.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-md bg-indigo-50 px-2.5 py-1 text-xs font-bold text-indigo-700 border border-indigo-200">
+                  Delivery Posture: {data.summary?.deliveryRiskPosture || "ANALYZED"}
+                </span>
+              </div>
+            </div>
+
+            {/* Cross-domain summary pills */}
+            {data.summary && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Total Projects</span>
+                  <p className="font-mono text-sm font-bold text-slate-800 mt-0.5">{data.summary.totalProjects}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">At Risk Projects</span>
+                  <p className="font-mono text-sm font-bold text-amber-600 mt-0.5">{data.summary.atRiskOrDelayedProjects}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Overdue Invoices</span>
+                  <p className="font-mono text-sm font-bold text-rose-600 mt-0.5">{data.summary.totalOverdueInvoices}</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-slate-400">Overdue AR Amount</span>
+                  <p className="font-mono text-sm font-bold text-rose-600 mt-0.5">{data.summary.totalOverdueAmountFormatted || "₹0"}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* 3.16 Cynbit DeliveryOps: Prepared Client Follow-up Details */}
+        {isPrepareFollowupData && (
+          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50/70 p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+              <div className="flex items-center gap-2">
+                <ShieldAlert size={16} className="text-amber-600" />
+                <span className="text-xs font-bold text-amber-900 uppercase tracking-wide">
+                  Grounded Client Follow-up Proposal
+                </span>
+              </div>
+              <span className="font-mono text-xs font-bold text-amber-900">
+                {data.approvalId || approvalId}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-[10px] text-amber-700 uppercase font-semibold">Target Client:</span>
+                <p className="font-bold text-slate-800">{data.customer || data.company}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-700 uppercase font-semibold">Project & Risk:</span>
+                <p className="font-bold text-slate-800">
+                  {data.project} (Risk: {data.riskLevel || "MEDIUM"})
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-700 uppercase font-semibold">Recipient:</span>
+                <p className="font-mono text-slate-700">{data.proposedRecipient || data.recipientEmail}</p>
+              </div>
+              <div>
+                <span className="text-[10px] text-amber-700 uppercase font-semibold">Subject Line:</span>
+                <p className="font-semibold text-slate-800">{data.proposedSubject || data.subject}</p>
+              </div>
+            </div>
+
+            {(data.proposedMessage || data.message) && (
+              <div className="rounded-lg bg-white border border-amber-200 p-3">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Draft Message Preview:</span>
+                <p className="mt-1 font-mono text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                  {data.proposedMessage || data.message}
+                </p>
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-[11px] text-amber-800 font-medium">
+              <span>⚠️ Zero external emails dispatched. Human authorization required before execution.</span>
+              <button
+                onClick={() => navigate(`/approvals?id=${data.approvalId || approvalId}`)}
+                className="flex items-center gap-1 rounded-md bg-amber-600 px-2.5 py-1 text-xs font-semibold text-white shadow-xs hover:bg-amber-700 transition"
+              >
+                <span>Authorize in Approvals</span>
+                <ArrowRight size={12} />
+              </button>
             </div>
           </div>
         )}

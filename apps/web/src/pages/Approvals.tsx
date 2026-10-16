@@ -487,10 +487,30 @@ function ApprovalDetails({
 
             <DetailRow label="Request ID" value={approval.id} />
 
-            <DetailRow label="Status" value={approval.status} />
+            <DetailRow
+              label="Requester"
+              value={
+                approval.arguments?.requestedBy?.name
+                  ? `${approval.arguments.requestedBy.name} (${approval.arguments.requestedBy.email})`
+                  : "AI Agent / Operator"
+              }
+            />
+
+            <DetailRow label="Approval Status" value={approval.status} />
+
+            <DetailRow
+              label="Execution Status"
+              value={approval.executionStatus || "NOT_EXECUTED"}
+            />
+
+            <DetailRow label="Created Time" value={new Date(approval.createdAt).toLocaleString()} />
+
+            {approval.decidedAt && (
+              <DetailRow label="Decision Time" value={new Date(approval.decidedAt).toLocaleString()} />
+            )}
 
             {approval.decidedBy && (
-              <DetailRow label="Decided By" value={approval.decidedBy} />
+              <DetailRow label="Deciding Actor" value={approval.decidedBy} />
             )}
           </div>
         </div>
@@ -500,6 +520,16 @@ function ApprovalDetails({
           <div className="mt-6">
             <SectionTitle title="Proposed Client Follow-Up" />
             <div className="mt-3 space-y-3">
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3.5 flex items-start gap-2.5">
+                <ShieldAlert size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className="text-xs text-amber-900">
+                  <p className="font-bold">Human Approval Strictly Required</p>
+                  <p className="mt-0.5 text-amber-800 text-[11px] leading-relaxed">
+                    Zero external emails have been sent. The AI agent prepared this grounded proposal based on authoritative delivery risk and blocker records. Execution occurs only after human authorization.
+                  </p>
+                </div>
+              </div>
+
               {/* Context Summary Cards */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3">

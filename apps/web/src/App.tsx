@@ -18,6 +18,7 @@ const Settings = lazy(() => import('./pages/Settings'));
 const Tools = lazy(() => import('./pages/Tools'));
 const AuditLog = lazy(() => import('./pages/AuditLog'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
+const Projects = lazy(() => import('./pages/Projects'));
 
 /**
  * Minimal page loading fallback preserving the clean SaaS design language
@@ -90,6 +91,14 @@ export default function App() {
                 element={
                   <ProtectedRoute allowedRoles={['ADMIN', 'OPERATOR']}>
                     <AIAgent />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/projects"
+                element={
+                  <ProtectedRoute allowedRoles={['ADMIN', 'OPERATOR', 'APPROVER']}>
+                    <Projects />
                   </ProtectedRoute>
                 }
               />

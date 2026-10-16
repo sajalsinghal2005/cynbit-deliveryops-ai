@@ -138,4 +138,53 @@ export * from './auth';
 export * from './user-admin';
 export * from './agent';
 
+export interface MilestoneItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  dueDate: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'delayed';
+  progressPercent: number;
+}
+
+export interface BlockerItem {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  status: 'open' | 'in_progress' | 'resolved';
+  impact: string;
+  identifiedDate: string;
+  milestoneId?: string | null;
+}
+
+export interface ProjectItem {
+  id: string;
+  name: string;
+  description?: string | null;
+  status: 'active' | 'on_track' | 'at_risk' | 'delayed' | 'completed';
+  healthScore: number;
+  deliveryLead: string;
+  techStack: string[];
+  budget?: string | null;
+  startDate: string;
+  targetDate: string;
+  customer?: {
+    id: string;
+    name: string;
+    company: string;
+    email: string;
+    status: string;
+    aiHealthScore: number;
+  } | null;
+  progressPercent: number;
+  milestonesCount: number;
+  completedMilestonesCount: number;
+  delayedMilestonesCount: number;
+  openBlockersCount: number;
+  criticalBlockersCount: number;
+  highBlockersCount: number;
+  milestones: MilestoneItem[];
+  blockers: BlockerItem[];
+}
 

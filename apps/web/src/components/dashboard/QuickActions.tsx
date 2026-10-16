@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShoppingCart, FileText, Users, Bot, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ShoppingCart, FileText, Users, Bot, Sparkles, CheckCircle2, FolderKanban } from 'lucide-react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 
@@ -26,34 +26,36 @@ export default function QuickActions() {
 
   const actions = [
     {
-      id: 'create_order',
-      title: 'Create Order',
-      description: 'New client purchase order',
-      icon: ShoppingCart,
+      id: 'delivery_projects',
+      title: 'Delivery Projects',
+      description: 'Track health, milestones & blockers',
+      icon: FolderKanban,
       color: 'bg-indigo-50 text-indigo-600 border-indigo-100 hover:border-indigo-200',
+      directNav: '/projects',
     },
     {
-      id: 'send_invoice',
-      title: 'Send Invoice',
-      description: 'Auto-billed or manual invoice',
-      icon: FileText,
-      color: 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-200',
+      id: 'start_ai_task',
+      title: 'Start AI Agent',
+      description: 'Prompt AI agent with operations goal',
+      icon: Bot,
+      color: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-200',
+      directNav: '/agent',
     },
     {
       id: 'find_customer',
-      title: 'Find Customer',
+      title: 'Customer Accounts',
       description: 'Search CRM directory & intelligence',
       icon: Users,
       color: 'bg-blue-50 text-blue-600 border-blue-100 hover:border-blue-200',
       directNav: '/customers',
     },
     {
-      id: 'start_ai_task',
-      title: 'Start AI Task',
-      description: 'Prompt AI agent with operations goal',
-      icon: Bot,
-      color: 'bg-purple-50 text-purple-600 border-purple-100 hover:border-purple-200',
-      directNav: '/agent',
+      id: 'send_invoice',
+      title: 'Invoices & Billing',
+      description: 'Receivables & auto-reminders',
+      icon: FileText,
+      color: 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:border-emerald-200',
+      directNav: '/invoices',
     },
   ];
 

@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Bot, Sparkles, ArrowRight, CheckCircle2, Zap } from 'lucide-react';
 import Badge from '../ui/Badge';
+import { useAuth } from '../../context/AuthContext';
 
 export default function WelcomeBanner() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const displayName = user?.name ? user.name.split(' ')[0] : 'Operations Lead';
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-indigo-100/80 bg-gradient-to-br from-white via-indigo-50/30 to-purple-50/40 p-6 sm:p-8 shadow-[0_2px_10px_-3px_rgba(99,102,241,0.08)]">
@@ -16,12 +19,12 @@ export default function WelcomeBanner() {
         <div className="max-w-xl">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              Wednesday, October 7, 2026
+              Cynbit DeliveryOps AI • Enterprise Edition
             </span>
           </div>
 
           <h1 className="font-heading text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
-            Good evening, <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Sajal!</span>
+            Welcome back, <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">{displayName}!</span>
           </h1>
 
           <p className="mt-2 text-sm sm:text-base text-slate-600 leading-relaxed">
