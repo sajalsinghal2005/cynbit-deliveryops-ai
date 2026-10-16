@@ -17,6 +17,7 @@ import { authRoutes } from "./routes/auth.routes.js";
 import { userAdminRoutes } from "./routes/user-admin.routes.js";
 import { toolRoutes } from "./routes/tool.routes.js";
 import { webhookRoutes } from "./routes/webhook.routes.js";
+import { projectRoutes } from "./routes/project.routes.js";
 
 /**
  * Fastify Application Factory
@@ -136,6 +137,7 @@ await app.register(auditRoutes);
 await app.register(userAdminRoutes);
 await app.register(toolRoutes);
 await app.register(webhookRoutes);
+await app.register(projectRoutes);
 
 // =============================================================================
 // CENTRALIZED SANITIZED ERROR HANDLER

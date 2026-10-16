@@ -389,6 +389,7 @@ export const projectRiskAnalysisInputSchema = z.object({
   projectId: z
     .string()
     .trim()
+    .min(1, "Project ID cannot be an empty string")
     .optional()
     .describe(
       "Optional project ID (e.g. PRJ-101) or project name keyword. If omitted or 'all', analyzes and ranks all projects across the delivery portfolio."
@@ -681,7 +682,12 @@ export async function analyzeProjectRisk(
   const identifier = parsed.projectId?.trim();
 
   // 1. Specific Project Risk Analysis
-  if (identifier && identifier.toLowerCase() !== "all") {
+  if (
+    identifier &&
+    !["all", "portfolio", "highest", "all projects", "entire portfolio"].includes(
+      identifier.toLowerCase()
+    )
+  ) {
     const project = await prisma.project.findFirst({
       where: {
         OR: [
@@ -1086,6 +1092,7 @@ export const clientDeliverySummaryInputSchema = z.object({
   query: z
     .string()
     .trim()
+    .min(1, "Client query cannot be empty if provided")
     .optional()
     .describe(
       "Customer ID (e.g. 1, 2, 3), name, or company keyword. If omitted or 'all', analyzes cross-domain risk across all accounts."
