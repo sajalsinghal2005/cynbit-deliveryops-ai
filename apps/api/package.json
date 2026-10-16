@@ -10,7 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:seed": "tsx prisma/seed.ts",
-    "test:migration": "tsx test_postgres_migration.ts"
+    "test:migration": "tsx test_postgres_migration.ts",
+    "evaluate": "tsx evaluation/run_eval.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",

@@ -121,39 +121,44 @@ async function main() {
     console.log(" SECTION 1: TOOL REGISTRY ARCHITECTURE & HARDENING                ");
     console.log("------------------------------------------------------------------");
 
-    // 1. Registered Tool Lookup (Strict 15 tools: 14 READ_ONLY + 1 CONSEQUENTIAL)
+    // 1. Registered Tool Lookup (Strict 21 tools: 19 READ_ONLY + 2 CONSEQUENTIAL)
     const registeredTools = toolRegistry.listTools();
-    assert(registeredTools.length === 15, `Expected exactly 15 registered tools, got ${registeredTools.length}`);
+    assert(registeredTools.length === 21, `Expected exactly 21 registered tools, got ${registeredTools.length}`);
 
     const readOnlyTools = registeredTools.filter((t) => t.operationType === "READ_ONLY");
     const consequentialTools = registeredTools.filter((t) => t.operationType === "CONSEQUENTIAL");
-    assert(readOnlyTools.length === 14, `Expected exactly 14 read-only tools, got ${readOnlyTools.length}`);
-    assert(consequentialTools.length === 1, `Expected exactly 1 consequential tool, got ${consequentialTools.length}`);
+    assert(readOnlyTools.length === 19, `Expected exactly 19 read-only tools, got ${readOnlyTools.length}`);
+    assert(consequentialTools.length === 2, `Expected exactly 2 consequential tools, got ${consequentialTools.length}`);
 
     // Verify all read-only tools have requiresApproval: false
     for (const tool of readOnlyTools) {
       assert(tool.requiresApproval === false, `Read-only tool "${tool.id}" must have requiresApproval: false`);
     }
 
-    // Verify consequential tool requires approval
+    // Verify consequential tools require approval
     const emailTool = toolRegistry.getTool("send-email");
     assert(emailTool !== undefined, "send-email must be in registry");
     assert(emailTool?.operationType === "CONSEQUENTIAL", "send-email must be CONSEQUENTIAL");
     assert(emailTool?.requiresApproval === true, "send-email must require approval");
 
+    const followupTool = toolRegistry.getTool("prepare-client-followup");
+    assert(followupTool !== undefined, "prepare-client-followup must be in registry");
+    assert(followupTool?.operationType === "CONSEQUENTIAL", "prepare-client-followup must be CONSEQUENTIAL");
+    assert(followupTool?.requiresApproval === true, "prepare-client-followup must require approval");
+
     // Verify GET /api/tools API introspection endpoint returns exact counts
     const apiToolsRes = await callApi("/api/tools", adminSession);
     assert(apiToolsRes.status === 200, "GET /api/tools must return 200");
     const apiToolsData = (await apiToolsRes.json()) as any;
-    assert(apiToolsData.total === 15, `GET /api/tools total must be 15, got ${apiToolsData.total}`);
-    assert(apiToolsData.tools?.length === 15, `GET /api/tools tools array must contain 15 items, got ${apiToolsData.tools?.length}`);
+    assert(apiToolsData.total === 21, `GET /api/tools total must be 21, got ${apiToolsData.total}`);
+    assert(apiToolsData.tools?.length === 21, `GET /api/tools tools array must contain 21 items, got ${apiToolsData.tools?.length}`);
 
     const foundTool = toolRegistry.getTool("customer-search");
     assert(foundTool !== undefined, "customer-search must be in registry");
     assert(foundTool?.category === "CRM", "customer-search category must be CRM");
     assert(foundTool?.operationType === "READ_ONLY", "customer-search must be READ_ONLY");
     assert(foundTool?.requiresApproval === false, "customer-search must not require approval");
-    console.log(`✓ 1. Registered Tool Lookup: verified exactly 15 registered tools (14 READ_ONLY, 1 CONSEQUENTIAL) via registry & GET /api/tools.`);
+    console.log(`✓ 1. Registered Tool Lookup: verified exactly 21 registered tools (19 READ_ONLY, 2 CONSEQUENTIAL) via registry & GET /api/tools.`);
 
     // 2. Unknown Tool Rejection
     const unknownRes = await toolRegistry.executeTool("unregistered-arbitrary-function", {});

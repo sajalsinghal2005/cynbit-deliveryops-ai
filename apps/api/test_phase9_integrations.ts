@@ -195,6 +195,9 @@ async function runPhase9Tests() {
   // =========================================================================
   console.log("\n▶ [TEST GROUP C] Atomic Idempotency & Concurrent Execution Protection");
 
+  // Ensure simulation adapter is active for deterministic approval execution
+  emailService.setProvider(simAdapter);
+
   // C.1: Single Authorized Approval Execution
   const approveResult = await approvalService.approveApproval(testApprovalId, approverUser);
   assert.strictEqual(approveResult.success, true);
