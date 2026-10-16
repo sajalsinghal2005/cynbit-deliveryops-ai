@@ -79,12 +79,47 @@ jobs:
       - name: Typecheck Frontend (web)
         run: pnpm --filter web exec tsc -b --noEmit
 
+      - name: Start API Server
+        working-directory: ./apps/api
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bizops_ai?schema=public
+          SESSION_SECRET: test-session-secret-must-be-at-least-32-chars-long
+          EMAIL_PROVIDER: simulation
+          PORT: 4000
+        run: |
+          nohup pnpm exec tsx src/server.ts > /tmp/api.log 2>&1 &
+          SERVER_PID=$!
+          echo "API_PID=$SERVER_PID" >> $GITHUB_ENV
+
+          echo "Waiting for API to become ready on http://127.0.0.1:4000/health..."
+          READY=0
+          for i in $(seq 1 30); do
+            if curl -s -f http://127.0.0.1:4000/health > /dev/null 2>&1; then
+              echo "API is ready on http://127.0.0.1:4000/health after ${i}s"
+              READY=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "API process exited unexpectedly (PID: $SERVER_PID). Server log:"
+              cat /tmp/api.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [ $READY -ne 1 ]; then
+            echo "API failed to respond on http://127.0.0.1:4000/health within 30s. Server log:"
+            cat /tmp/api.log
+            exit 1
+          fi
+
       - name: Run Backend Tests
         working-directory: ./apps/api
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bizops_ai?schema=public
           SESSION_SECRET: test-session-secret-must-be-at-least-32-chars-long
           EMAIL_PROVIDER: simulation
+          PORT: 4000
         run: |
           pnpm exec tsx test_phase10_orchestration.ts
           pnpm exec tsx test_phase9_integrations.ts
@@ -93,6 +128,15 @@ jobs:
           pnpm exec tsx test_agent_workflow.ts
           pnpm exec tsx test_phase5_hardening.ts
           pnpm exec tsx test_rbac_lockdown.ts
+
+      - name: Stop API Server
+        if: always()
+        run: |
+          if [ -n "$API_PID" ] && kill -0 "$API_PID" 2>/dev/null; then
+            echo "Stopping API server (PID: $API_PID)..."
+            kill "$API_PID" 2>/dev/null || true
+          fi
+          fuser -k 4000/tcp 2>/dev/null || true
 
       - name: Build Backend Production Bundle
         run: pnpm --filter @bizops/api run build
