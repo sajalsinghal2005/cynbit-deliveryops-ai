@@ -59,9 +59,15 @@ BizOps AI is a hardened, production-oriented API built on Fastify 5 and PostgreS
 ### 3.3 AI Operations Agent
 | Method | Endpoint | Access | Purpose |
 | :--- | :--- | :--- | :--- |
-| `POST` | `/api/agent` | `ADMIN`, `OPERATOR` + CSRF | Evaluates user business intent against the 15-tool Tool Registry. Read-only tools resolve autonomously; consequential tools return `APPROVAL_REQUIRED` and queue an `ApprovalRequest`. |
+| `POST` | `/api/agent` | `ADMIN`, `OPERATOR` + CSRF | Evaluates user business intent against the 21-tool Tool Registry. Read-only tools resolve autonomously; consequential tools return `APPROVAL_REQUIRED` and queue an `ApprovalRequest`. |
 
-### 3.4 Governance & Human-in-the-Loop Approvals
+### 3.4 Delivery Operations & Projects
+| Method | Endpoint | Access | Purpose |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/projects` | Authenticated | List all delivery projects with client metadata, health scores, milestones summary, and active blockers. |
+| `GET` | `/api/projects/:id` | Authenticated | Retrieve single delivery project details, complete milestone timeline, and detailed blocker tickets. |
+
+### 3.5 Governance & Human-in-the-Loop Approvals
 | Method | Endpoint | Access | Purpose |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/approvals` | `ADMIN`, `OPERATOR`, `APPROVER` | List approval requests with filtering by `status`, `risk`, and search term. |
@@ -69,17 +75,17 @@ BizOps AI is a hardened, production-oriented API built on Fastify 5 and PostgreS
 | `POST` | `/api/approvals/:id/approve` | `ADMIN`, `APPROVER` + CSRF | Atomically approve proposal and execute simulated action. Idempotent under retries and concurrent clicks. |
 | `POST` | `/api/approvals/:id/reject` | `ADMIN`, `APPROVER` + CSRF | Atomically reject proposal. Prevents execution. |
 
-### 3.5 Tool Registry Introspection
+### 3.6 Tool Registry Introspection
 | Method | Endpoint | Access | Purpose |
 | :--- | :--- | :--- | :--- |
-| `GET` | `/api/tools` | Authenticated | List all 15 registered business tools, schemas, risk ratings, and operational classifications. |
+| `GET` | `/api/tools` | Authenticated | List all 21 registered business tools (19 read-only, 2 consequential), schemas, risk ratings, and operational classifications. |
 
-### 3.6 Audit Trail & Compliance
+### 3.7 Audit Trail & Compliance
 | Method | Endpoint | Access | Purpose |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/audit-events` | `ADMIN`, `APPROVER` | Paginated immutable audit trail with actor attribution and metadata inspection. |
 
-### 3.7 User & Administrative Governance
+### 3.8 User & Administrative Governance
 | Method | Endpoint | Access | Purpose |
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/admin/users` | `ADMIN` only | List system users. |
