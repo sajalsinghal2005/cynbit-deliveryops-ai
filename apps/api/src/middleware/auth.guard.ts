@@ -32,19 +32,20 @@ export async function authenticate(
   const user = await authService.getCurrentUser(sessionToken);
 
   if (!user) {
+    const isProd = process.env.NODE_ENV === "production";
     // Clear stale cookies if present
     if (request.cookies[SESSION_COOKIE_NAME]) {
       reply.clearCookie(SESSION_COOKIE_NAME, {
         path: "/",
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
       });
       reply.clearCookie(CSRF_COOKIE_NAME, {
         path: "/",
         httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
       });
     }
 

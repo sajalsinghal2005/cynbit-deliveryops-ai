@@ -63,7 +63,7 @@ export class AuthController {
       path: "/",
       httpOnly: true,
       secure: isProd,
-      sameSite: "lax",
+      sameSite: isProd ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
     });
 
@@ -73,7 +73,7 @@ export class AuthController {
         path: "/",
         httpOnly: false,
         secure: isProd,
-        sameSite: "lax",
+        sameSite: isProd ? "none" : "lax",
         maxAge: 7 * 24 * 60 * 60,
       });
     }
@@ -117,14 +117,14 @@ export class AuthController {
       path: "/",
       httpOnly: true,
       secure: isProd,
-      sameSite: "lax",
+      sameSite: isProd ? "none" : "lax",
     });
 
     reply.clearCookie(CSRF_COOKIE_NAME, {
       path: "/",
       httpOnly: false,
       secure: isProd,
-      sameSite: "lax",
+      sameSite: isProd ? "none" : "lax",
     });
 
     return reply.status(200).send({
@@ -158,13 +158,13 @@ export class AuthController {
         path: "/",
         httpOnly: true,
         secure: isProd,
-        sameSite: "lax",
+        sameSite: isProd ? "none" : "lax",
       });
       reply.clearCookie(CSRF_COOKIE_NAME, {
         path: "/",
         httpOnly: false,
         secure: isProd,
-        sameSite: "lax",
+        sameSite: isProd ? "none" : "lax",
       });
 
       return reply.status(401).send({

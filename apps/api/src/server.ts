@@ -53,21 +53,28 @@ export const app = Fastify({
 // Configure Trusted Frontend Origins for Credentialed CORS
 const isProduction = config.NODE_ENV === "production";
 const devOrigins = isProduction ? [] : ["http://localhost:5173", "http://127.0.0.1:5173"];
+const normalizeOrigin = (u: string) => u.trim().replace(/\/+$/, "");
+
 const additionalOrigins = config.ALLOWED_ORIGINS
   ? config.ALLOWED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
   : [];
 
 const trustedOrigins = new Set<string>([
-  config.FRONTEND_URL,
-  ...devOrigins,
-  ...additionalOrigins,
+  normalizeOrigin(config.FRONTEND_URL),
+  ...devOrigins.map(normalizeOrigin),
+  ...additionalOrigins.map(normalizeOrigin),
 ]);
 
 await app.register(cors, {
   origin: (origin, cb) => {
     // Allow non-browser requests (tools, curl, server-side tests)
     if (!origin) return cb(null, true);
-    if (trustedOrigins.has(origin)) {
+    const cleanOrigin = normalizeOrigin(origin);
+    if (trustedOrigins.has(cleanOrigin)) {
+      return cb(null, true);
+    }
+    // Also allow matching Vercel preview deployments if main frontend is on Vercel
+    if (cleanOrigin.endsWith(".vercel.app") && config.FRONTEND_URL.includes("vercel.app")) {
       return cb(null, true);
     }
     return cb(new Error("CORS origin not permitted by security policy"), false);
