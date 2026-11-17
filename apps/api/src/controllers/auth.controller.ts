@@ -1,9 +1,34 @@
+import crypto from "node:crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import { authService } from "../services/auth.service.js";
 
-const SESSION_COOKIE_NAME = "bizops_session";
-const CSRF_COOKIE_NAME = "bizops_csrf";
+export const SESSION_COOKIE_NAME = "bizops_session";
+export const CSRF_COOKIE_NAME = "bizops_csrf";
+
+/**
+ * Returns security-hardened cookie configuration:
+ * In production or over HTTPS, uses SameSite=None + Secure for cross-origin SPA compatibility.
+ * In local development, uses SameSite=Lax for standard local browsing.
+ */
+export function getCookieSecurityOptions(request?: FastifyRequest) {
+  const isHttps = Boolean(
+    request &&
+      ((request.headers["x-forwarded-proto"] as string) === "https" ||
+        request.protocol === "https")
+  );
+  const isProd =
+    process.env.NODE_ENV === "production" ||
+    process.env.RENDER === "true" ||
+    process.env.VERCEL === "1" ||
+    isHttps;
+
+  return {
+    path: "/",
+    secure: isProd,
+    sameSite: isProd ? ("none" as const) : ("lax" as const),
+  };
+}
 
 const loginBodySchema = z.object({
   email: z
@@ -56,24 +81,20 @@ export class AuthController {
       });
     }
 
-    const isProd = process.env.NODE_ENV === "production";
+    const cookieOpts = getCookieSecurityOptions(request);
 
     // Set secure HTTP-Only session cookie
     reply.setCookie(SESSION_COOKIE_NAME, result.sessionToken, {
-      path: "/",
+      ...cookieOpts,
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
     });
 
     // Set CSRF token cookie accessible to frontend client for double-submit header
     if (result.csrfToken) {
       reply.setCookie(CSRF_COOKIE_NAME, result.csrfToken, {
-        path: "/",
+        ...cookieOpts,
         httpOnly: false,
-        secure: isProd,
-        sameSite: isProd ? "none" : "lax",
         maxAge: 7 * 24 * 60 * 60,
       });
     }
@@ -90,41 +111,26 @@ export class AuthController {
    * Handles POST /api/auth/logout
    */
   public async logout(request: FastifyRequest, reply: FastifyReply) {
-    // CSRF verification for mutating logout request
-    const csrfCookie = request.cookies[CSRF_COOKIE_NAME];
-    const csrfHeader = request.headers["x-csrf-token"];
-
-    if (request.cookies[SESSION_COOKIE_NAME]) {
-      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
-        return reply.status(403).send({
-          success: false,
-          message: "Invalid or missing CSRF token.",
-        });
-      }
-    }
-
     const sessionToken = request.cookies[SESSION_COOKIE_NAME];
     const ipAddress =
       (request.headers["x-forwarded-for"] as string) ||
       request.socket.remoteAddress;
 
-    await authService.logout(sessionToken, ipAddress);
+    if (sessionToken) {
+      await authService.logout(sessionToken, ipAddress);
+    }
 
-    const isProd = process.env.NODE_ENV === "production";
+    const cookieOpts = getCookieSecurityOptions(request);
 
     // Clear session and CSRF cookies
     reply.clearCookie(SESSION_COOKIE_NAME, {
-      path: "/",
+      ...cookieOpts,
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
     });
 
     reply.clearCookie(CSRF_COOKIE_NAME, {
-      path: "/",
+      ...cookieOpts,
       httpOnly: false,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
     });
 
     return reply.status(200).send({
@@ -135,6 +141,7 @@ export class AuthController {
 
   /**
    * Handles GET /api/auth/me
+   * Validates active session and ensures client retains matching CSRF token and cookie.
    */
   public async getMe(request: FastifyRequest, reply: FastifyReply) {
     const sessionToken =
@@ -153,18 +160,14 @@ export class AuthController {
     const user = await authService.getCurrentUser(sessionToken);
 
     if (!user) {
-      const isProd = process.env.NODE_ENV === "production";
+      const cookieOpts = getCookieSecurityOptions(request);
       reply.clearCookie(SESSION_COOKIE_NAME, {
-        path: "/",
+        ...cookieOpts,
         httpOnly: true,
-        secure: isProd,
-        sameSite: isProd ? "none" : "lax",
       });
       reply.clearCookie(CSRF_COOKIE_NAME, {
-        path: "/",
+        ...cookieOpts,
         httpOnly: false,
-        secure: isProd,
-        sameSite: isProd ? "none" : "lax",
       });
 
       return reply.status(401).send({
@@ -173,9 +176,46 @@ export class AuthController {
       });
     }
 
+    let csrfToken = request.cookies[CSRF_COOKIE_NAME];
+    const cookieOpts = getCookieSecurityOptions(request);
+
+    // If CSRF cookie is missing or was partitioned, issue a fresh one
+    if (!csrfToken) {
+      csrfToken = authService.generateCsrfToken();
+      reply.setCookie(CSRF_COOKIE_NAME, csrfToken, {
+        ...cookieOpts,
+        httpOnly: false,
+        maxAge: 7 * 24 * 60 * 60,
+      });
+    }
+
     return reply.status(200).send({
       success: true,
       user,
+      csrfToken,
+    });
+  }
+
+  /**
+   * Handles GET /api/auth/csrf
+   * Provides on-demand CSRF token acquisition/refresh for client double-submit headers.
+   */
+  public async getCsrf(request: FastifyRequest, reply: FastifyReply) {
+    let csrfToken = request.cookies[CSRF_COOKIE_NAME];
+    const cookieOpts = getCookieSecurityOptions(request);
+
+    if (!csrfToken) {
+      csrfToken = authService.generateCsrfToken();
+      reply.setCookie(CSRF_COOKIE_NAME, csrfToken, {
+        ...cookieOpts,
+        httpOnly: false,
+        maxAge: 7 * 24 * 60 * 60,
+      });
+    }
+
+    return reply.status(200).send({
+      success: true,
+      csrfToken,
     });
   }
 }

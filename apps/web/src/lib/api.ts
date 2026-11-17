@@ -15,6 +15,7 @@ export class ApiError extends Error {
 }
 
 let inMemoryCsrfToken: string | null = null;
+let csrfFetchPromise: Promise<string | null> | null = null;
 
 export function setCsrfToken(token: string | null) {
   inMemoryCsrfToken = token;
@@ -35,12 +36,48 @@ export function getCsrfToken(): string | null {
 }
 
 /**
+ * Proactively acquires or refreshes a valid CSRF token from the backend.
+ * Uses promise de-duplication to prevent concurrent duplicate round-trips.
+ * Never stores tokens in localStorage or sessionStorage.
+ */
+export async function fetchCsrfToken(): Promise<string | null> {
+  if (csrfFetchPromise) {
+    return csrfFetchPromise;
+  }
+
+  csrfFetchPromise = (async () => {
+    try {
+      const url = `${API_BASE_URL ? API_BASE_URL : ''}/api/auth/csrf`;
+      const res = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && typeof data.csrfToken === 'string' && data.csrfToken.trim() !== '') {
+          setCsrfToken(data.csrfToken);
+          return data.csrfToken;
+        }
+      }
+    } catch {
+      // Graceful error recovery: returns current inMemoryCsrfToken if network fails
+    } finally {
+      csrfFetchPromise = null;
+    }
+    return inMemoryCsrfToken;
+  })();
+
+  return csrfFetchPromise;
+}
+
+/**
  * Core fetch wrapper that guarantees:
  * 1. credentials: "include" for session cookie persistence across origins.
  * 2. Automatic X-CSRF-Token header attachment on mutating requests.
- * 3. Proper JSON body encoding and Content-Type headers.
- * 4. Consistent ApiError extraction on non-2xx responses.
- * 5. Automatic session-expired event dispatching on 401 responses.
+ * 3. Proactive acquisition and safe single-retry token renewal on CSRF invalidation.
+ * 4. Proper JSON body encoding and Content-Type headers.
+ * 5. Consistent ApiError extraction on non-2xx responses.
+ * 6. Automatic session-expired event dispatching on 401 responses.
  */
 export async function apiFetch<T = any>(
   endpoint: string,
@@ -55,7 +92,10 @@ export async function apiFetch<T = any>(
 
   // Mutating requests require CSRF token when authenticated with cookies
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
-    const csrfToken = getCsrfToken();
+    let csrfToken = getCsrfToken();
+    if (!csrfToken && !headers.has('X-CSRF-Token')) {
+      csrfToken = await fetchCsrfToken();
+    }
     if (csrfToken && !headers.has('X-CSRF-Token')) {
       headers.set('X-CSRF-Token', csrfToken);
     }
@@ -94,6 +134,25 @@ export async function apiFetch<T = any>(
       data && typeof data === 'object' && data.message
         ? data.message
         : `Request failed with status ${response.status} (${response.statusText})`;
+
+    // Safe CSRF renewal retry: If the server rejected due to an expired/missing CSRF token,
+    // fetch a fresh token from /api/auth/csrf and retry the mutating request exactly once.
+    const isCsrfError =
+      response.status === 403 &&
+      typeof errorMessage === 'string' &&
+      errorMessage.toLowerCase().includes('csrf');
+
+    if (isCsrfError && !(options as any)._isCsrfRetry) {
+      const freshToken = await fetchCsrfToken();
+      if (freshToken) {
+        headers.set('X-CSRF-Token', freshToken);
+        return apiFetch<T>(endpoint, {
+          ...options,
+          headers,
+          _isCsrfRetry: true,
+        } as any);
+      }
+    }
 
     // Notify application if an active session expired on a protected business endpoint
     if (

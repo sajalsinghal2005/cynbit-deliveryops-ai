@@ -157,8 +157,11 @@ export default function Approvals() {
         "success",
       );
 
-      // Refresh approvals
+      // Refresh approvals list and notify layout sidebar
       await fetchApprovals();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("bizops:approvals-updated"));
+      }
     } catch (err: any) {
       const msg = err instanceof ApiError ? err.message : "Network error while processing approval.";
       showToast(msg, "info");
@@ -186,6 +189,9 @@ export default function Approvals() {
 
       showToast(data.message || `Request ${id} rejected.`, "info");
       await fetchApprovals();
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("bizops:approvals-updated"));
+      }
     } catch (err: any) {
       const msg = err instanceof ApiError ? err.message : "Network error while rejecting approval.";
       showToast(msg, "info");

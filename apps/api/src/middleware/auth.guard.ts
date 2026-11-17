@@ -1,9 +1,12 @@
+import crypto from "node:crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { UserRole } from "@prisma/client";
 import { authService, type SafeUserProfile } from "../services/auth.service.js";
-
-const SESSION_COOKIE_NAME = "bizops_session";
-const CSRF_COOKIE_NAME = "bizops_csrf";
+import {
+  SESSION_COOKIE_NAME,
+  CSRF_COOKIE_NAME,
+  getCookieSecurityOptions,
+} from "../controllers/auth.controller.js";
 
 /**
  * Fastify preHandler hook: Authenticates request by validating session cookie or Bearer token.
@@ -32,20 +35,16 @@ export async function authenticate(
   const user = await authService.getCurrentUser(sessionToken);
 
   if (!user) {
-    const isProd = process.env.NODE_ENV === "production";
+    const cookieOpts = getCookieSecurityOptions(request);
     // Clear stale cookies if present
     if (request.cookies[SESSION_COOKIE_NAME]) {
       reply.clearCookie(SESSION_COOKIE_NAME, {
-        path: "/",
+        ...cookieOpts,
         httpOnly: true,
-        secure: isProd,
-        sameSite: isProd ? "none" : "lax",
       });
       reply.clearCookie(CSRF_COOKIE_NAME, {
-        path: "/",
+        ...cookieOpts,
         httpOnly: false,
-        secure: isProd,
-        sameSite: isProd ? "none" : "lax",
       });
     }
 
@@ -91,6 +90,7 @@ export function authorize(allowedRoles: UserRole[]) {
 
 /**
  * Fastify preHandler hook: Validates CSRF token on mutating cookie-authenticated requests.
+ * Uses timing-safe constant-time string comparison to prevent side-channel timing attacks.
  */
 export async function verifyCsrf(
   request: FastifyRequest,
@@ -99,9 +99,18 @@ export async function verifyCsrf(
   // If request uses cookie authentication, enforce CSRF protection
   if (request.cookies[SESSION_COOKIE_NAME]) {
     const csrfCookie = request.cookies[CSRF_COOKIE_NAME];
-    const csrfHeader = request.headers["x-csrf-token"];
+    const rawHeader = request.headers["x-csrf-token"];
+    const csrfHeader = Array.isArray(rawHeader) ? rawHeader[0] : rawHeader;
 
-    if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+    const isValid =
+      typeof csrfCookie === "string" &&
+      typeof csrfHeader === "string" &&
+      csrfCookie.length > 0 &&
+      csrfHeader.length > 0 &&
+      csrfCookie.length === csrfHeader.length &&
+      crypto.timingSafeEqual(Buffer.from(csrfCookie), Buffer.from(csrfHeader));
+
+    if (!isValid) {
       return reply.status(403).send({
         success: false,
         code: "FORBIDDEN",

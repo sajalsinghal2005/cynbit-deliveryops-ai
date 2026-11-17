@@ -486,11 +486,11 @@ export default function AuditLog() {
               Activity & Audit Log
             </h1>
             <Badge variant="purple" size="sm" dot>
-              PostgreSQL Immutable Trail
+              PostgreSQL Audit Trail
             </Badge>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-2xl">
-            Real-time, cryptographically verified record of all AI actions, proposal generations, and human authorization decisions.
+            Persistent audit trail of AI actions, proposal generation, and human authorization decisions.
           </p>
         </div>
 

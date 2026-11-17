@@ -245,7 +245,12 @@ export class AuditService {
         }),
         prisma.auditEvent.count({ where }),
         prisma.auditEvent.count({ where: scopeWhere }),
-        prisma.auditEvent.count({ where: { ...scopeWhere, eventType: "DECISION_APPROVED" } }),
+        prisma.auditEvent.count({
+          where: {
+            ...scopeWhere,
+            eventType: { in: ["DECISION_APPROVED", "DECISION_APPROVED_EXECUTION_FAILED"] },
+          },
+        }),
         prisma.auditEvent.count({ where: { ...scopeWhere, eventType: "DECISION_REJECTED" } }),
         prisma.auditEvent.count({ where: { ...scopeWhere, eventType: "PROPOSAL_CREATED" } }),
       ]);

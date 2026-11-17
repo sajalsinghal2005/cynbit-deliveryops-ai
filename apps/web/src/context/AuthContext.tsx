@@ -18,9 +18,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
    */
   const refreshUser = useCallback(async (): Promise<SafeUserProfile | null> => {
     try {
-      const data = await api.get<{ success: boolean; user?: SafeUserProfile }>('/api/auth/me');
+      const data = await api.get<{
+        success: boolean;
+        user?: SafeUserProfile;
+        csrfToken?: string;
+      }>('/api/auth/me');
       if (data && data.success && data.user) {
         setUser(data.user);
+        if (data.csrfToken) {
+          setCsrfToken(data.csrfToken);
+        }
         return data.user;
       } else {
         setUser(null);
@@ -42,10 +49,17 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     async function initAuth() {
       try {
-        const data = await api.get<{ success: boolean; user?: SafeUserProfile }>('/api/auth/me');
+        const data = await api.get<{
+          success: boolean;
+          user?: SafeUserProfile;
+          csrfToken?: string;
+        }>('/api/auth/me');
         if (active) {
           if (data && data.success && data.user) {
             setUser(data.user);
+            if (data.csrfToken) {
+              setCsrfToken(data.csrfToken);
+            }
           } else {
             setUser(null);
             setCsrfToken(null);

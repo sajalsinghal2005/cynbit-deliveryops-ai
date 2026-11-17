@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { api } from '../../lib/api';
 import {
   LayoutDashboard,
   Bot,
@@ -62,7 +63,6 @@ const navItems: NavItemConfig[] = [
     label: 'Approvals',
     to: '/approvals',
     icon: ClipboardCheck,
-    badge: '3',
     roles: ['ADMIN', 'OPERATOR', 'APPROVER'],
   },
   {
@@ -114,6 +114,35 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number | null>(null);
+
+  // Dynamically load real pending approvals count from PostgreSQL
+  const fetchPendingApprovals = useCallback(async () => {
+    if (!user) return;
+    try {
+      const data = await api.get<{
+        success: boolean;
+        count?: number;
+        approvals?: Array<{ status: string }>;
+      }>('/api/approvals?status=PENDING');
+
+      if (data && typeof data.count === 'number') {
+        setPendingApprovalsCount(data.count);
+      } else if (data && Array.isArray(data.approvals)) {
+        setPendingApprovalsCount(data.approvals.filter((a) => a.status === 'PENDING').length);
+      }
+    } catch {
+      // Non-critical background telemetry
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchPendingApprovals();
+    window.addEventListener('bizops:approvals-updated', fetchPendingApprovals);
+    return () => {
+      window.removeEventListener('bizops:approvals-updated', fetchPendingApprovals);
+    };
+  }, [fetchPendingApprovals]);
 
   // Helper to extract clean user initials
   const getInitials = (name?: string) => {
@@ -276,11 +305,21 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
                           </span>
                         )}
 
-                        {item.badge && (
+                        {/* Dynamic Pending Approvals Badge or static badge */}
+                        {item.to === '/approvals' &&
+                        pendingApprovalsCount !== null &&
+                        pendingApprovalsCount > 0 ? (
+                          <span
+                            title={`${pendingApprovalsCount} pending approval${pendingApprovalsCount === 1 ? '' : 's'} awaiting authorization`}
+                            className="flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-xs shadow-rose-500/30 animate-in fade-in"
+                          >
+                            {pendingApprovalsCount}
+                          </span>
+                        ) : item.badge ? (
                           <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white shadow-xs shadow-rose-500/30">
                             {item.badge}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     </>
                   )}

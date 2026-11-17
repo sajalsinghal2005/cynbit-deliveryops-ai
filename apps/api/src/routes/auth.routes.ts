@@ -41,4 +41,9 @@ export async function authRoutes(app: FastifyInstance) {
       return authController.getMe(request, reply);
     },
   );
+
+  // CSRF token retrieval/refresh endpoint (publicly accessible so clients can initialize or refresh double-submit CSRF cookie & header)
+  app.get("/api/auth/csrf", async (request, reply) => {
+    return authController.getCsrf(request, reply);
+  });
 }
