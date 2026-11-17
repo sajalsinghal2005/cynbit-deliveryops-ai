@@ -63,27 +63,44 @@ export interface AuditEventsResponse {
  * to ensure raw payloads remain strictly secure and read-only.
  */
 function sanitizePayload(raw: unknown): Record<string, any> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+  if (!raw || typeof raw !== "object") {
     return { data: raw };
   }
 
-  const sensitiveKeys = new Set([
-    "password",
-    "secret",
-    "apikey",
-    "api_key",
-    "token",
-    "authorization",
-    "creditcard",
-    "cvv",
-  ]);
+  if (Array.isArray(raw)) {
+    return {
+      data: raw.map((item) =>
+        typeof item === "object" && item !== null ? sanitizePayload(item) : item
+      ),
+    };
+  }
+
+  const sensitiveKeyPatterns = [
+    /password/i,
+    /secret/i,
+    /api[-_]?key/i,
+    /token/i,
+    /cookie/i,
+    /session[-_]?token/i,
+    /csrf/i,
+    /hash/i,
+    /credit[-_]?card/i,
+    /cvv/i,
+    /database[-_]?url/i,
+    /connection[-_]?string/i,
+  ];
 
   const sanitized: Record<string, any> = {};
 
   for (const [key, value] of Object.entries(raw as Record<string, any>)) {
-    if (sensitiveKeys.has(key.toLowerCase())) {
+    const isSensitive = sensitiveKeyPatterns.some((pattern) => pattern.test(key));
+    if (isSensitive) {
       sanitized[key] = "[REDACTED]";
-    } else if (value && typeof value === "object" && !Array.isArray(value)) {
+    } else if (Array.isArray(value)) {
+      sanitized[key] = value.map((item) =>
+        typeof item === "object" && item !== null ? sanitizePayload(item) : item
+      );
+    } else if (value && typeof value === "object") {
       sanitized[key] = sanitizePayload(value);
     } else {
       sanitized[key] = value;
@@ -181,8 +198,23 @@ export class AuditService {
       }
     }
 
-    // Fetch records and total count concurrently
-    const [records, total, approvedCount, rejectedCount, proposalCount] =
+    // Scope filters applied to summary stats (date range and search, but without the table's specific eventType or status filter)
+    const scopeWhere: Prisma.AuditEventWhereInput = {};
+    if (where.timestamp) {
+      scopeWhere.timestamp = where.timestamp;
+    }
+    if (where.actor) {
+      scopeWhere.actor = where.actor;
+    }
+    if (where.approvalRequestId) {
+      scopeWhere.approvalRequestId = where.approvalRequestId;
+    }
+    if (where.OR) {
+      scopeWhere.OR = where.OR;
+    }
+
+    // Fetch records, table pagination count, and summary statistics concurrently from PostgreSQL
+    const [records, totalTableEvents, totalInScope, approvedCount, rejectedCount, proposalCount] =
       await Promise.all([
         prisma.auditEvent.findMany({
           where,
@@ -212,12 +244,13 @@ export class AuditService {
           take: limit,
         }),
         prisma.auditEvent.count({ where }),
-        prisma.auditEvent.count({ where: { eventType: "DECISION_APPROVED" } }),
-        prisma.auditEvent.count({ where: { eventType: "DECISION_REJECTED" } }),
-        prisma.auditEvent.count({ where: { eventType: "PROPOSAL_CREATED" } }),
+        prisma.auditEvent.count({ where: scopeWhere }),
+        prisma.auditEvent.count({ where: { ...scopeWhere, eventType: "DECISION_APPROVED" } }),
+        prisma.auditEvent.count({ where: { ...scopeWhere, eventType: "DECISION_REJECTED" } }),
+        prisma.auditEvent.count({ where: { ...scopeWhere, eventType: "PROPOSAL_CREATED" } }),
       ]);
 
-    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const totalPages = Math.max(1, Math.ceil(totalTableEvents / limit));
 
     const sanitizedData: SanitizedAuditEvent[] = records.map((record) => {
       const appReq = record.approvalRequest;
@@ -261,13 +294,13 @@ export class AuditService {
       pagination: {
         page,
         limit,
-        total,
+        total: totalTableEvents,
         totalPages,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
       },
       stats: {
-        total: approvedCount + rejectedCount + proposalCount,
+        total: totalInScope,
         approved: approvedCount,
         rejected: rejectedCount,
         proposals: proposalCount,
