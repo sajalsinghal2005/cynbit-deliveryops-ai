@@ -63,20 +63,36 @@ export class DeterministicLLMProvider implements LLMProvider {
 
     let decision: ModelDecision;
 
-    // 1. Prompt Injection & Jailbreak Defense Interception
+    // 1. Prompt Injection, Exfiltration & Raw Database Access Defense
     if (
       /(?:ignore\s+(?:all\s+)?previous\s+instructions|system\s+prompt|reveal\s+(?:your\s+)?instructions|you\s+are\s+now|override\s+system|maintenance\s+mode|send\s+(?:the\s+)?api\s*key)/i.test(
         trimmed
-      )
+      ) ||
+      /(?:send|dump|export|give|show)\s+(?:me\s+)?(?:your|all|the)?\s*(?:database|db\s*records|postgres\s*(?:password|credentials)|password\s*hashes|users?\s*passwords?)/i.test(
+        trimmed
+      ) ||
+      /(?:execute|run)\s+(?:arbitrary\s+)?sql|select\s+\*\s+from/i.test(trimmed)
     ) {
       decision = {
         type: "final_answer",
-        reasoningSummary: "Prompt injection attempt detected and safely neutralized.",
+        reasoningSummary: "Security policy: Raw database extraction, credential export, or arbitrary SQL execution is prohibited.",
         response:
-          "I am BizOps AI. I cannot alter my security policies, execute unauthenticated instructions, or reveal confidential system information.",
+          "I cannot access, dump, or export raw database tables, credentials, or password hashes. BizOps AI operates strictly through governed, authenticated read-only business tools.",
       };
     }
-    // 2. Unsupported Project / Database Mutations
+    // 2. Out-of-Scope Consumer / General Chat Inquiries
+    else if (
+      /(?:which|what|best)\s+(?:mobile|phone|smartphone|laptop|car|movie|song|book|restaurant)/i.test(trimmed) ||
+      /(?:tell\s+me\s+a\s+joke|write\s+a\s+poem|who\s+won\s+the|weather\s+in)/i.test(trimmed)
+    ) {
+      decision = {
+        type: "final_answer",
+        reasoningSummary: "Out-of-scope query: Request is outside DeliveryOps & BizOps domain capabilities.",
+        response:
+          "I am an enterprise BizOps & DeliveryOps operations assistant focused on project delivery, customer accounts, invoices, and business workflows. I cannot advise on consumer electronics or general topics. Please ask about your delivery projects, blockers, customer accounts, or billing.",
+      };
+    }
+    // 3. Unsupported Project / Database Mutations
     else if (
       /(?:delete|drop|destroy|truncate|remove)\s+(?:the\s+)?(?:delayed\s+)?(?:project|milestone|blocker|database|table)s?/i.test(
         trimmed

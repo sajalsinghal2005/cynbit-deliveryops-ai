@@ -39,7 +39,8 @@ export type AgentOutcomeType =
   | "TOOL_EXECUTION_FAILURE"
   | "INTERNAL_FAILURE"
   | "CLARIFICATION"
-  | "REFUSAL";
+  | "REFUSAL"
+  | "SECURITY_BLOCKED";
 
 export interface AgentProcessResult {
   success: boolean;
@@ -164,6 +165,15 @@ type AgentIntent =
       subject: string;
       message: string;
     }
+  // Security & Scope safeguards
+  | {
+      type: "security_blocked";
+      message: string;
+    }
+  | {
+      type: "out_of_scope";
+      message: string;
+    }
   // Unsupported
   | {
       type: "unsupported";
@@ -178,15 +188,32 @@ export class BusinessAgent {
     const trimmed = message.trim();
     const lower = trimmed.toLowerCase();
 
-    // 0. PROMPT INJECTION & UNTRUSTED DATA SAFEGUARD
+    // 0. PROMPT INJECTION, EXFILTRATION & RAW DATABASE ACCESS SAFEGUARD
     if (
       /(?:ignore\s+(?:all\s+)?previous\s+instructions|system\s+prompt|reveal\s+(?:your\s+)?instructions|you\s+are\s+now|override\s+system|maintenance\s+mode|send\s+(?:the\s+)?api\s*key)/i.test(
         trimmed
-      )
+      ) ||
+      /(?:send|dump|export|give|show)\s+(?:me\s+)?(?:your|all|the)?\s*(?:database|db\s*records|postgres\s*(?:password|credentials)|password\s*hashes|users?\s*passwords?)/i.test(
+        trimmed
+      ) ||
+      /(?:execute|run)\s+(?:arbitrary\s+)?sql|select\s+\*\s+from/i.test(trimmed)
     ) {
       return {
-        type: "unsupported",
-        unsupportedFeature: "Security Exception: Adversarial instruction / prompt injection blocked. Untrusted project/business data cannot override instructions.",
+        type: "security_blocked",
+        message:
+          "I cannot access, dump, or export raw database tables, credentials, or password hashes. BizOps AI operates strictly through governed, authenticated read-only business tools.",
+      };
+    }
+
+    // 0.05 OUT-OF-SCOPE GENERAL INQUIRIES
+    if (
+      /(?:which|what|best)\s+(?:mobile|phone|smartphone|laptop|car|movie|song|book|restaurant)/i.test(trimmed) ||
+      /(?:tell\s+me\s+a\s+joke|write\s+a\s+poem|who\s+won\s+the|weather\s+in)/i.test(trimmed)
+    ) {
+      return {
+        type: "out_of_scope",
+        message:
+          "I am an enterprise BizOps & DeliveryOps operations assistant focused on project delivery, customer accounts, invoices, and business workflows. I cannot advise on consumer electronics or general topics. Please ask about your delivery projects, blockers, customer accounts, or billing.",
       };
     }
 
@@ -736,6 +763,30 @@ export class BusinessAgent {
     user?: SafeUserProfile,
   ): Promise<AgentProcessResult> {
     const intent = this.detectIntent(message);
+
+    // -------------------------------------------------------------
+    // Security & Data Access Safeguard Block
+    // -------------------------------------------------------------
+    if (intent.type === "security_blocked") {
+      return {
+        success: true,
+        outcome: "SECURITY_BLOCKED",
+        message: intent.message,
+        approvalRequired: false,
+      };
+    }
+
+    // -------------------------------------------------------------
+    // Out-of-Scope General Inquiry Refusal
+    // -------------------------------------------------------------
+    if (intent.type === "out_of_scope") {
+      return {
+        success: true,
+        outcome: "REFUSAL",
+        message: intent.message,
+        approvalRequired: false,
+      };
+    }
 
     // -------------------------------------------------------------
     // Negative Reminder Acknowledgment

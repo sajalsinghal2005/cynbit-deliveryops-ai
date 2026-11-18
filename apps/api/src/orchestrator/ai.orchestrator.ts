@@ -2,7 +2,7 @@ import { config } from "../config/env.js";
 import { prisma } from "../lib/prisma.js";
 import { toolRegistry } from "../tools/tool.registry.js";
 import { approvalStore } from "../data/approvals.js";
-import { businessAgent, type AgentProcessResult } from "../agents/business.agent.js";
+import { businessAgent, type AgentProcessResult, type AgentOutcomeType } from "../agents/business.agent.js";
 import type { SafeUserProfile } from "../services/auth.service.js";
 import type {
   LLMProvider,
@@ -146,13 +146,20 @@ export class AIOrchestrator {
 
         // CASE A: Direct Final Answer or Clarification
         if (decision.type === "final_answer" || decision.type === "clarification") {
-          let outcome: "READ_ONLY_RESULT" | "CLARIFICATION" | "REFUSAL" = "READ_ONLY_RESULT";
+          let outcome: AgentOutcomeType = "READ_ONLY_RESULT";
           const text = decision.response || "";
-          if (decision.type === "clarification" || /(?:please\s+clarify|could\s+you\s+specify|which\s+project)/i.test(text)) {
+          const reasoning = (decision.reasoningSummary || "").toLowerCase();
+
+          if (
+            /(?:security\s+policy|prompt\s+injection|database\s+extraction|credential\s+export|arbitrary\s+sql|confidential\s+system)/i.test(reasoning) ||
+            /(?:security\s+policies|confidential\s+system|cannot\s+access.*database|credentials\s+or\s+password)/i.test(text)
+          ) {
+            outcome = "SECURITY_BLOCKED";
+          } else if (decision.type === "clarification" || /(?:please\s+clarify|could\s+you\s+specify|which\s+project)/i.test(text)) {
             outcome = "CLARIFICATION";
           } else if (
-            /(?:cannot|not\s+supported|unsupported|unable\s+to|refuse|disallowed|prohibited|not\s+permitted|do\s+not\s+have|can\s+only|safeguards?)/i.test(
-              text
+            /(?:out-of-scope|cannot|not\s+supported|unsupported|unable\s+to|refuse|disallowed|prohibited|not\s+permitted|do\s+not\s+have|can\s+only|safeguards?)/i.test(
+              text + " " + reasoning
             )
           ) {
             outcome = "REFUSAL";

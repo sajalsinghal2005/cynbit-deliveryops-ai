@@ -4,7 +4,10 @@ export type AgentOutcomeType =
   | "UNSUPPORTED_REQUEST"
   | "INVALID_REQUEST"
   | "TOOL_EXECUTION_FAILURE"
-  | "INTERNAL_FAILURE";
+  | "INTERNAL_FAILURE"
+  | "CLARIFICATION"
+  | "REFUSAL"
+  | "SECURITY_BLOCKED";
 
 export interface AgentCustomerItem {
   id: string;
